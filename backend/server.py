@@ -703,6 +703,77 @@ async def initialize_sample_data():
 # Include the router in the main app
 app.include_router(api_router)
 
+# Performance monitoring endpoints
+@api_router.get("/performance/cache")
+async def get_cache_performance():
+    """Get cache performance statistics"""
+    return await get_cache_stats()
+
+@api_router.get("/performance/database")
+async def get_database_performance():
+    """Get database performance statistics"""
+    if not db_optimizer:
+        return {"error": "Database optimizer not initialized"}
+    
+    return await db_optimizer.get_collection_stats()
+
+@api_router.post("/performance/analyze-query")
+async def analyze_query_performance(collection: str, query: dict, limit: int = 100):
+    """Analyze query performance"""
+    if not db_optimizer:
+        return {"error": "Database optimizer not initialized"}
+    
+    return await db_optimizer.analyze_query_performance(collection, query, limit)
+
+@api_router.post("/performance/clear-cache")
+@limiter.limit("5/minute")
+async def clear_cache(request, pattern: str = "*"):
+    """Clear cache with optional pattern"""
+    result = await cache_manager.clear_pattern(pattern)
+    return {"success": result, "pattern": pattern}
+
+@api_router.post("/performance/optimize-database")
+@limiter.limit("2/minute")
+async def optimize_database(request, collection: Optional[str] = None):
+    """Optimize database collections"""
+    if not db_optimizer:
+        return {"error": "Database optimizer not initialized"}
+    
+    if collection:
+        result = await db_optimizer.optimize_collection(collection)
+        return {"collection": collection, "result": result}
+    else:
+        # Optimize all collections
+        collections = ["products", "users", "carts", "reviews", "status_checks"]
+        results = {}
+        for coll in collections:
+            results[coll] = await db_optimizer.optimize_collection(coll)
+        return {"results": results}
+
+# Health check with performance metrics
+@api_router.get("/health")
+async def health_check():
+    """Enhanced health check with performance metrics"""
+    cache_stats = await get_cache_stats()
+    db_stats = await db_optimizer.get_collection_stats() if db_optimizer else {}
+    
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "cache": cache_stats,
+        "database": {
+            "status": "connected",
+            "collections": len(db_stats),
+            "total_documents": sum(stats.get("document_count", 0) for stats in db_stats.values() if isinstance(stats, dict))
+        },
+        "features": [
+            "redis_caching",
+            "database_optimization", 
+            "rate_limiting",
+            "gzip_compression"
+        ]
+    }
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
