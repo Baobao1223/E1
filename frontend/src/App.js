@@ -21,13 +21,6 @@ const Header = ({ cartItemCount = 0 }) => {
       window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
     }
   };
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      // Redirect to search results
-      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
-    }
   };
 
   return (
