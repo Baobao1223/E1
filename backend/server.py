@@ -27,8 +27,39 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# Rate limiting setup
+limiter = Limiter(key_func=get_remote_address)
+
 # Create the main app without a prefix
-app = FastAPI(title="3D Tech Store API", version="1.0.0")
+app = FastAPI(title="3D Tech Store API", version="2.0.0")
+
+# Add middleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # Compress responses > 1KB
+app.add_middleware(SlowAPIMiddleware)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Global variables for optimization modules
+db_optimizer: Optional[DatabaseOptimizer] = None
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    global db_optimizer
+    
+    # Initialize cache
+    await cache_manager.connect()
+    
+    # Setup database optimization
+    db_optimizer = await setup_database_optimization(db)
+    
+    logging.info("🚀 3D Tech Store API v2.0.0 started with performance optimizations!")
+
+# Shutdown event  
+@app.on_event("shutdown")
+async def shutdown_event():
+    await cache_manager.disconnect()
+    logging.info("👋 3D Tech Store API shutting down...")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
