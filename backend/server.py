@@ -202,7 +202,12 @@ class StatusCheckCreate(BaseModel):
 # Root endpoint
 @api_router.get("/")
 async def root():
-    return {"message": "3D Tech Store API - Ready to serve!", "version": "1.0.0"}
+    return {"message": "3D Tech Store API - Ready to serve!", "version": "2.0.0"}
+
+# Simple test endpoint
+@api_router.get("/test")
+async def test_endpoint():
+    return {"status": "working", "optimizations": OPTIMIZATIONS_AVAILABLE}
 
 # Status check endpoints
 @api_router.post("/status", response_model=StatusCheck)
