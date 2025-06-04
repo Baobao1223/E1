@@ -16,8 +16,19 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 # Import our optimization modules
-from cache import cache_manager, cache_response, invalidate_product_cache, get_cache_stats
-from database_optimization import setup_database_optimization, DatabaseOptimizer
+try:
+    from .cache import cache_manager, cache_response, invalidate_product_cache, get_cache_stats
+    from .database_optimization import setup_database_optimization, DatabaseOptimizer
+    OPTIMIZATIONS_AVAILABLE = True
+except ImportError:
+    # Fallback if optimization modules are not available
+    print("Warning: Performance optimization modules not available. Running in basic mode.")
+    OPTIMIZATIONS_AVAILABLE = False
+    cache_manager = None
+    get_cache_stats = lambda: {"status": "unavailable"}
+    invalidate_product_cache = lambda: None
+    setup_database_optimization = lambda db: None
+    DatabaseOptimizer = None
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
