@@ -1897,4 +1897,23 @@ const CategoryPageWrapper = () => {
   return <CategoryPage category={category} />;
 };
 
+// Main App Component with Routing
+const App = () => {
+  return (
+    <BrowserRouter>
+      <div className="App">
+        <Header />
+        <Routes>
+          <Route path="/" element={<Homepage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/category/:category" element={<CategoryPageWrapper />} />
+          <Route path="/product/:productId" element={<ProductDetailPage />} />
+          <Route path="/product" element={<ProductDetailPage />} />
+        </Routes>
+        <Footer />
+      </div>
+    </BrowserRouter>
+  );
+};
+
 export default App;
