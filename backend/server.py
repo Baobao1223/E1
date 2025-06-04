@@ -379,6 +379,70 @@ async def get_user_favorites(user_id: str):
     products = await db.products.find({"id": {"$in": favorite_ids}}).to_list(100)
     return [Product(**product) for product in products]
 
+# Review endpoints
+@api_router.post("/reviews", response_model=Review)
+async def create_review(review_data: ReviewCreate):
+    """Create a new product review"""
+    # Check if product exists
+    product = await db.products.find_one({"id": review_data.product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Check if user already reviewed this product
+    existing_review = await db.reviews.find_one({
+        "product_id": review_data.product_id,
+        "user_id": review_data.user_id
+    })
+    if existing_review:
+        raise HTTPException(status_code=400, detail="User has already reviewed this product")
+    
+    review = Review(**review_data.dict())
+    await db.reviews.insert_one(review.dict())
+    return review
+
+@api_router.get("/reviews/product/{product_id}", response_model=List[Review])
+async def get_product_reviews(product_id: str, limit: int = 20):
+    """Get all reviews for a product"""
+    reviews = await db.reviews.find({"product_id": product_id}).sort("created_at", -1).limit(limit).to_list(limit)
+    return [Review(**review) for review in reviews]
+
+@api_router.get("/reviews/stats/{product_id}")
+async def get_product_review_stats(product_id: str):
+    """Get review statistics for a product"""
+    pipeline = [
+        {"$match": {"product_id": product_id}},
+        {"$group": {
+            "_id": None,
+            "total_reviews": {"$sum": 1},
+            "average_rating": {"$avg": "$rating"},
+            "rating_counts": {
+                "$push": "$rating"
+            }
+        }}
+    ]
+    
+    stats = await db.reviews.aggregate(pipeline).to_list(1)
+    
+    if not stats:
+        return {
+            "total_reviews": 0,
+            "average_rating": 0,
+            "rating_distribution": {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        }
+    
+    stat = stats[0]
+    rating_counts = stat["rating_counts"]
+    
+    distribution = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for rating in rating_counts:
+        distribution[rating] += 1
+    
+    return {
+        "total_reviews": stat["total_reviews"],
+        "average_rating": round(stat["average_rating"], 1),
+        "rating_distribution": distribution
+    }
+
 # Statistics endpoints
 @api_router.get("/stats/dashboard")
 async def get_dashboard_stats():
