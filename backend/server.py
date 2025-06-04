@@ -21,13 +21,13 @@ sys.path.append(os.path.dirname(__file__))
 
 # Import our optimization modules
 try:
-    import cache
+    import simple_cache
     import database_optimization
     
-    cache_manager = cache.cache_manager
-    cache_response = cache.cache_response
-    invalidate_product_cache = cache.invalidate_product_cache
-    get_cache_stats = cache.get_cache_stats
+    cache_manager = simple_cache.cache_manager
+    cache_response = simple_cache.cache_response
+    invalidate_product_cache = simple_cache.invalidate_product_cache
+    get_cache_stats = simple_cache.get_cache_stats
     setup_database_optimization = database_optimization.setup_database_optimization
     DatabaseOptimizer = database_optimization.DatabaseOptimizer
     OPTIMIZATIONS_AVAILABLE = True
