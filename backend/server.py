@@ -235,10 +235,11 @@ async def get_products(
     # Create cache key from parameters
     cache_key = f"products:{category}:{product_type}:{featured}:{search}:{min_price}:{max_price}:{limit}"
     
-    # Try cache first
-    cached_result = await cache_manager.get(cache_key)
-    if cached_result:
-        return [Product(**product) for product in cached_result]
+    # Try cache first if available
+    if OPTIMIZATIONS_AVAILABLE and cache_manager:
+        cached_result = await cache_manager.get(cache_key)
+        if cached_result:
+            return [Product(**product) for product in cached_result]
     
     # Build query
     filter_dict = {}
@@ -266,8 +267,9 @@ async def get_products(
     products = await db.products.find(filter_dict).limit(limit).to_list(limit)
     result = [Product(**product) for product in products]
     
-    # Cache the result for 5 minutes
-    await cache_manager.set(cache_key, [product.dict() for product in result], expire=300)
+    # Cache the result for 5 minutes if caching available
+    if OPTIMIZATIONS_AVAILABLE and cache_manager:
+        await cache_manager.set(cache_key, [product.dict() for product in result], expire=300)
     
     return result
 
