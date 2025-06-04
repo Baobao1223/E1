@@ -21,7 +21,6 @@ const Header = ({ cartItemCount = 0 }) => {
       window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
     }
   };
-  };
 
   return (
     <header className="bg-white shadow-lg border-b-4 border-orange-500 sticky top-0 z-50">
