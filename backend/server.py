@@ -15,14 +15,26 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+# Add current directory to path for local imports
+import sys
+sys.path.append(os.path.dirname(__file__))
+
 # Import our optimization modules
 try:
-    from .cache import cache_manager, cache_response, invalidate_product_cache, get_cache_stats
-    from .database_optimization import setup_database_optimization, DatabaseOptimizer
+    import cache
+    import database_optimization
+    
+    cache_manager = cache.cache_manager
+    cache_response = cache.cache_response
+    invalidate_product_cache = cache.invalidate_product_cache
+    get_cache_stats = cache.get_cache_stats
+    setup_database_optimization = database_optimization.setup_database_optimization
+    DatabaseOptimizer = database_optimization.DatabaseOptimizer
     OPTIMIZATIONS_AVAILABLE = True
-except ImportError:
+    
+except ImportError as e:
     # Fallback if optimization modules are not available
-    print("Warning: Performance optimization modules not available. Running in basic mode.")
+    print(f"Warning: Performance optimization modules not available: {e}. Running in basic mode.")
     OPTIMIZATIONS_AVAILABLE = False
     cache_manager = None
     get_cache_stats = lambda: {"status": "unavailable"}
