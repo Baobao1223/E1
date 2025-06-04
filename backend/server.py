@@ -245,12 +245,27 @@ async def get_products(
     return result
 
 @api_router.get("/products/{product_id}", response_model=Product)
-async def get_product(product_id: str):
-    """Get a specific product by ID"""
+@limiter.limit("200/minute")
+async def get_product(request, product_id: str):
+    """Get a specific product by ID - CACHED"""
+    
+    # Try cache first
+    cache_key = f"product:{product_id}"
+    cached_result = await cache_manager.get(cache_key)
+    if cached_result:
+        return Product(**cached_result)
+    
+    # Query database
     product = await db.products.find_one({"id": product_id})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return Product(**product)
+    
+    result = Product(**product)
+    
+    # Cache for 10 minutes (individual products change less frequently)
+    await cache_manager.set(cache_key, result.dict(), expire=600)
+    
+    return result
 
 @api_router.post("/products", response_model=Product)
 async def create_product(product_data: ProductCreate):
