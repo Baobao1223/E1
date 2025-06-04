@@ -192,7 +192,9 @@ async def get_status_checks():
 
 # Product endpoints
 @api_router.get("/products", response_model=List[Product])
+@limiter.limit("100/minute")  # Rate limiting
 async def get_products(
+    request,  # Required for rate limiting
     category: Optional[str] = None,
     product_type: Optional[str] = None,
     featured: Optional[bool] = None,
@@ -201,7 +203,17 @@ async def get_products(
     max_price: Optional[float] = None,
     limit: int = 50
 ):
-    """Get all products with optional filtering and search"""
+    """Get all products with optional filtering and search - CACHED"""
+    
+    # Create cache key from parameters
+    cache_key = f"products:{category}:{product_type}:{featured}:{search}:{min_price}:{max_price}:{limit}"
+    
+    # Try cache first
+    cached_result = await cache_manager.get(cache_key)
+    if cached_result:
+        return [Product(**product) for product in cached_result]
+    
+    # Build query
     filter_dict = {}
     if category:
         filter_dict["category"] = category
@@ -223,8 +235,14 @@ async def get_products(
             price_filter["$lte"] = max_price
         filter_dict["price"] = price_filter
     
+    # Execute optimized query
     products = await db.products.find(filter_dict).limit(limit).to_list(limit)
-    return [Product(**product) for product in products]
+    result = [Product(**product) for product in products]
+    
+    # Cache the result for 5 minutes
+    await cache_manager.set(cache_key, [product.dict() for product in result], expire=300)
+    
+    return result
 
 @api_router.get("/products/{product_id}", response_model=Product)
 async def get_product(product_id: str):
