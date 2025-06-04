@@ -92,6 +92,7 @@ class User(BaseModel):
     name: str
     phone: Optional[str] = None
     address: Optional[str] = None
+    favorites: List[str] = []  # List of product IDs
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class UserCreate(BaseModel):
@@ -99,6 +100,11 @@ class UserCreate(BaseModel):
     name: str
     phone: Optional[str] = None
     address: Optional[str] = None
+
+# Wishlist Models
+class WishlistItem(BaseModel):
+    product_id: str
+    added_at: datetime = Field(default_factory=datetime.utcnow)
 
 # Basic status check endpoints
 class StatusCheck(BaseModel):
