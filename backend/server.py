@@ -133,9 +133,12 @@ async def get_products(
     category: Optional[str] = None,
     product_type: Optional[str] = None,
     featured: Optional[bool] = None,
+    search: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
     limit: int = 50
 ):
-    """Get all products with optional filtering"""
+    """Get all products with optional filtering and search"""
     filter_dict = {}
     if category:
         filter_dict["category"] = category
@@ -143,6 +146,19 @@ async def get_products(
         filter_dict["product_type"] = product_type
     if featured is not None:
         filter_dict["featured"] = featured
+    if search:
+        filter_dict["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}},
+            {"category": {"$regex": search, "$options": "i"}}
+        ]
+    if min_price is not None or max_price is not None:
+        price_filter = {}
+        if min_price is not None:
+            price_filter["$gte"] = min_price
+        if max_price is not None:
+            price_filter["$lte"] = max_price
+        filter_dict["price"] = price_filter
     
     products = await db.products.find(filter_dict).limit(limit).to_list(limit)
     return [Product(**product) for product in products]
