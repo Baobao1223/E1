@@ -236,9 +236,7 @@ async def get_status_checks():
 
 # Product endpoints
 @api_router.get("/products", response_model=List[Product])
-@limiter.limit("100/minute")  # Rate limiting
 async def get_products(
-    request,  # Required for rate limiting
     category: Optional[str] = None,
     product_type: Optional[str] = None,
     featured: Optional[bool] = None,
@@ -256,6 +254,7 @@ async def get_products(
     if OPTIMIZATIONS_AVAILABLE and cache_manager:
         cached_result = await cache_manager.get(cache_key)
         if cached_result:
+            logger.info(f"Cache HIT for key: {cache_key}")
             return [Product(**product) for product in cached_result]
     
     # Build query
@@ -287,6 +286,7 @@ async def get_products(
     # Cache the result for 5 minutes if caching available
     if OPTIMIZATIONS_AVAILABLE and cache_manager:
         await cache_manager.set(cache_key, [product.dict() for product in result], expire=300)
+        logger.info(f"Cache SET for key: {cache_key}")
     
     return result
 
