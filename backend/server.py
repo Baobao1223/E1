@@ -301,6 +301,57 @@ async def get_user(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
     return User(**user)
 
+# Statistics endpoints
+@api_router.get("/stats/dashboard")
+async def get_dashboard_stats():
+    """Get dashboard statistics"""
+    # Count products
+    total_products = await db.products.count_documents({})
+    featured_products = await db.products.count_documents({"featured": True})
+    
+    # Count users
+    total_users = await db.users.count_documents({})
+    
+    # Count carts with items
+    carts_with_items = await db.carts.count_documents({"items": {"$ne": []}})
+    
+    # Count by category
+    category_pipeline = [
+        {"$group": {"_id": "$category", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    categories = await db.products.aggregate(category_pipeline).to_list(100)
+    
+    # Price statistics
+    price_pipeline = [
+        {"$group": {
+            "_id": None,
+            "avg_price": {"$avg": "$price"},
+            "min_price": {"$min": "$price"},
+            "max_price": {"$max": "$price"}
+        }}
+    ]
+    price_stats = await db.products.aggregate(price_pipeline).to_list(1)
+    
+    return {
+        "products": {
+            "total": total_products,
+            "featured": featured_products,
+            "by_category": categories
+        },
+        "users": {
+            "total": total_users
+        },
+        "carts": {
+            "active": carts_with_items
+        },
+        "pricing": price_stats[0] if price_stats else {
+            "avg_price": 0,
+            "min_price": 0,
+            "max_price": 0
+        }
+    }
+
 # Initialize sample data
 @api_router.post("/init-sample-data")
 async def initialize_sample_data():
