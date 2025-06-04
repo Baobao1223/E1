@@ -307,6 +307,61 @@ async def get_user(user_id: str):
         raise HTTPException(status_code=404, detail="User not found")
     return User(**user)
 
+# Wishlist endpoints
+@api_router.post("/users/{user_id}/favorites/{product_id}")
+async def add_to_favorites(user_id: str, product_id: str):
+    """Add product to user's favorites"""
+    # Check if user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if product exists
+    product = await db.products.find_one({"id": product_id})
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Add to favorites if not already there
+    if product_id not in user.get("favorites", []):
+        await db.users.update_one(
+            {"id": user_id},
+            {"$addToSet": {"favorites": product_id}}
+        )
+    
+    return {"message": "Product added to favorites"}
+
+@api_router.delete("/users/{user_id}/favorites/{product_id}")
+async def remove_from_favorites(user_id: str, product_id: str):
+    """Remove product from user's favorites"""
+    # Check if user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Remove from favorites
+    await db.users.update_one(
+        {"id": user_id},
+        {"$pull": {"favorites": product_id}}
+    )
+    
+    return {"message": "Product removed from favorites"}
+
+@api_router.get("/users/{user_id}/favorites", response_model=List[Product])
+async def get_user_favorites(user_id: str):
+    """Get user's favorite products"""
+    # Check if user exists
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get favorite products
+    favorite_ids = user.get("favorites", [])
+    if not favorite_ids:
+        return []
+    
+    products = await db.products.find({"id": {"$in": favorite_ids}}).to_list(100)
+    return [Product(**product) for product in products]
+
 # Statistics endpoints
 @api_router.get("/stats/dashboard")
 async def get_dashboard_stats():
