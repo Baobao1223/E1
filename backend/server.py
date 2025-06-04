@@ -209,6 +209,18 @@ async def root():
 async def test_endpoint():
     return {"status": "working", "optimizations": OPTIMIZATIONS_AVAILABLE}
 
+# Test cache endpoint
+@api_router.get("/test-cache")
+async def test_cache():
+    """Test cache functionality"""
+    if OPTIMIZATIONS_AVAILABLE and cache_manager:
+        # Test cache set/get
+        await cache_manager.set("test_key", {"test": "data"}, 60)
+        result = await cache_manager.get("test_key")
+        stats = await get_cache_stats()
+        return {"cache_test": result, "cache_stats": stats}
+    return {"error": "Cache not available"}
+
 # Status check endpoints
 @api_router.post("/status", response_model=StatusCheck)
 async def create_status_check(input: StatusCheckCreate):
