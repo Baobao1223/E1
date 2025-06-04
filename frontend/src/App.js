@@ -22,6 +22,14 @@ const Header = ({ cartItemCount = 0 }) => {
     }
   };
 
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      // Redirect to search results
+      window.location.href = `/search?q=${encodeURIComponent(searchQuery.trim())}`;
+    }
+  };
+
   return (
     <header className="bg-white shadow-lg border-b-4 border-orange-500 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
