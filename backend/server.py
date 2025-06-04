@@ -70,18 +70,22 @@ db_optimizer: Optional[DatabaseOptimizer] = None
 async def startup_event():
     global db_optimizer
     
-    # Initialize cache
-    await cache_manager.connect()
+    if OPTIMIZATIONS_AVAILABLE:
+        # Initialize cache
+        if cache_manager:
+            await cache_manager.connect()
+        
+        # Setup database optimization
+        if setup_database_optimization:
+            db_optimizer = await setup_database_optimization(db)
     
-    # Setup database optimization
-    db_optimizer = await setup_database_optimization(db)
-    
-    logging.info("🚀 3D Tech Store API v2.0.0 started with performance optimizations!")
+    logging.info(f"🚀 3D Tech Store API v2.0.0 started! Optimizations: {'Enabled' if OPTIMIZATIONS_AVAILABLE else 'Disabled'}")
 
 # Shutdown event  
 @app.on_event("shutdown")
 async def shutdown_event():
-    await cache_manager.disconnect()
+    if OPTIMIZATIONS_AVAILABLE and cache_manager:
+        await cache_manager.disconnect()
     logging.info("👋 3D Tech Store API shutting down...")
 
 # Create a router with the /api prefix
