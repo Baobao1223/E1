@@ -443,6 +443,69 @@ async def get_product_review_stats(product_id: str):
         "rating_distribution": distribution
     }
 
+# Recommendation endpoints  
+@api_router.get("/products/{product_id}/recommendations", response_model=List[Product])
+async def get_product_recommendations(product_id: str, limit: int = 4):
+    """Get product recommendations based on category and price range"""
+    # Get the current product
+    current_product = await db.products.find_one({"id": product_id})
+    if not current_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # Get products in same category, different from current product
+    price_range = current_product["price"] * 0.3  # 30% price range
+    min_price = current_product["price"] - price_range
+    max_price = current_product["price"] + price_range
+    
+    recommendations = await db.products.find({
+        "id": {"$ne": product_id},
+        "category": current_product["category"],
+        "price": {"$gte": min_price, "$lte": max_price}
+    }).limit(limit).to_list(limit)
+    
+    # If not enough in same category, get by similar price
+    if len(recommendations) < limit:
+        additional = await db.products.find({
+            "id": {"$ne": product_id},
+            "category": {"$ne": current_product["category"]},
+            "price": {"$gte": min_price, "$lte": max_price}
+        }).limit(limit - len(recommendations)).to_list(limit - len(recommendations))
+        recommendations.extend(additional)
+    
+    return [Product(**product) for product in recommendations]
+
+@api_router.get("/products/trending")
+async def get_trending_products(limit: int = 8):
+    """Get trending products based on recent reviews and featured status"""
+    # Get products with recent reviews or featured products
+    pipeline = [
+        {"$lookup": {
+            "from": "reviews",
+            "localField": "id",
+            "foreignField": "product_id",
+            "as": "reviews"
+        }},
+        {"$addFields": {
+            "review_count": {"$size": "$reviews"},
+            "trend_score": {
+                "$add": [
+                    {"$multiply": [{"$size": "$reviews"}, 2]},
+                    {"$cond": [{"$eq": ["$featured", True]}, 5, 0]}
+                ]
+            }
+        }},
+        {"$sort": {"trend_score": -1, "created_at": -1}},
+        {"$limit": limit},
+        {"$project": {
+            "reviews": 0,
+            "trend_score": 0,
+            "review_count": 0
+        }}
+    ]
+    
+    trending = await db.products.aggregate(pipeline).to_list(limit)
+    return [Product(**product) for product in trending]
+
 # Statistics endpoints
 @api_router.get("/stats/dashboard")
 async def get_dashboard_stats():
