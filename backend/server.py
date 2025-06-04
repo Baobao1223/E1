@@ -268,10 +268,15 @@ async def get_product(request, product_id: str):
     return result
 
 @api_router.post("/products", response_model=Product)
-async def create_product(product_data: ProductCreate):
+@limiter.limit("10/minute")  # Limit product creation
+async def create_product(request, product_data: ProductCreate):
     """Create a new product"""
     product = Product(**product_data.dict())
     await db.products.insert_one(product.dict())
+    
+    # Invalidate product cache
+    await invalidate_product_cache()
+    
     return product
 
 @api_router.put("/products/{product_id}", response_model=Product)
