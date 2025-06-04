@@ -106,6 +106,23 @@ class WishlistItem(BaseModel):
     product_id: str
     added_at: datetime = Field(default_factory=datetime.utcnow)
 
+# Review Models
+class Review(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    product_id: str
+    user_id: str
+    user_name: str
+    rating: int = Field(ge=1, le=5)  # 1-5 stars
+    comment: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ReviewCreate(BaseModel):
+    product_id: str
+    user_id: str
+    user_name: str
+    rating: int = Field(ge=1, le=5)
+    comment: str
+
 # Basic status check endpoints
 class StatusCheck(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
